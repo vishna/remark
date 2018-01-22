@@ -16,6 +16,8 @@
 
 package com.overzealous.remark.util;
 
+import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -31,7 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class BlockWriter extends PrintWriter {
 
 	private int blockDepth = 0;
-	
+
 	private int lastWrittenBlockDepth = -1;
 
 	private boolean autoStartedBlock = false;
@@ -181,7 +183,21 @@ public final class BlockWriter extends PrintWriter {
 	@Override
 	public void println() {
 		testFirstPrepend();
-		super.println();
+		try {
+			synchronized (lock) {
+				if(out == null) {
+					throw new IOException("Stream closed");
+				}
+				out.write('\n');
+				out.flush();
+			}
+		}
+		catch (InterruptedIOException x) {
+			Thread.currentThread().interrupt();
+		}
+		catch (IOException x) {
+			setError();
+		}
 		prependAfterNewline();
 	}
 
